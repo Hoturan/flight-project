@@ -1,7 +1,5 @@
 # Databricks Jobs for Databricks Free Edition (AWS).
-# Uses notebook_task (thin wrappers) instead of spark_python_task,
-# because spark_python_task requires a REPL channel not supported on Free Edition.
-# All transformation logic lives in the Python source files — notebooks are entry points only.
+# Uses notebook_task (thin wrappers) instead of spark_python_task.
 # All file paths must be absolute (prefixed with /Workspace/).
 
 # 1. Streaming ingestion job
@@ -19,6 +17,11 @@ resource "databricks_job" "ingest_streaming" {
         workspace_path  = var.workspace_path
       }
     }
+  }
+
+  schedule {
+    quartz_cron_expression = "0 */1 * * * ?"
+    timezone_id            = "UTC"
   }
 
   depends_on = [databricks_schema.schemas]
@@ -72,6 +75,11 @@ resource "databricks_job" "gold_refresh" {
     }
   }
 
+  schedule {
+    quartz_cron_expression = "0 */5 * * * ?"
+    timezone_id            = "UTC"
+  }
+
   depends_on = [databricks_pipeline.dlt_pipeline]
 }
 
@@ -89,6 +97,11 @@ resource "databricks_job" "dq_publish" {
         workspace_path = var.workspace_path
       }
     }
+  }
+
+  schedule {
+    quartz_cron_expression = "0 */5 * * * ?"
+    timezone_id            = "UTC"
   }
 
   depends_on = [databricks_job.gold_refresh]
@@ -132,6 +145,11 @@ resource "databricks_job" "orchestration" {
         workspace_path = var.workspace_path
       }
     }
+  }
+
+  schedule {
+    quartz_cron_expression = "0 */5 * * * ?"
+    timezone_id            = "UTC"
   }
 
   depends_on = [databricks_pipeline.dlt_pipeline]

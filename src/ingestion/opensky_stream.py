@@ -14,7 +14,6 @@ CLI args:
 
 import argparse
 import time
-import uuid
 from typing import Iterator
 
 from pyspark.sql import SparkSession
@@ -69,11 +68,13 @@ def main():
 
     spark = get_spark()
 
-    # Use a rate source with 1 row per poll-interval to drive micro-batches
-    rate_df = spark.readStream.format("rate").option("rowsPerSecond", 1 / args.poll_interval).load()
+    # Use a rate source with 1 row per second to drive micro-batches.
+    # The actual polling cadence is controlled by the trigger interval below.
+    rate_df = spark.readStream.format("rate").option("rowsPerSecond", 1).load()
 
     # The rate source provides (timestamp, value); we use it only as a trigger.
     # foreachBatch fetches from OpenSky and writes to bronze.
+    # The trigger controls how often we poll (e.g. every 10 seconds).
     query = (
         rate_df.writeStream.foreachBatch(fetch_and_write)
         .outputMode("append")
