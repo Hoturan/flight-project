@@ -1,8 +1,9 @@
-"""DLT Bronze layer: reads from bronze.raw_states with data-quality expectations.
+"""DLT Bronze layer: reads from the externally-populated bronze.raw_states table.
 
-This file is executed by the Databricks Delta Live Tables pipeline.
-It registers the bronze streaming table and applies DQ constraints
-that quarantine invalid rows.
+The ingestion job (flight-ingest-streaming) writes to flight_cat.bronze.raw_states.
+This DLT table reads from that external table and applies DQ expectations.
+The DLT table is named 'dlt_bronze_states' to avoid a naming cycle with the
+external bronze.raw_states table.
 """
 
 import dlt
@@ -13,8 +14,8 @@ CATALOG = "flight_cat"
 
 
 @dlt.table(
-    name="raw_states",
-    comment="Raw OpenSky state vectors with ingestion metadata",
+    name="dlt_bronze_states",
+    comment="DLT bronze layer — reads from externally-ingested bronze.raw_states",
     table_properties={"delta.logRetentionDuration": "interval 14 days"},
 )
 @dlt.expect_all_or_drop({
@@ -22,7 +23,7 @@ CATALOG = "flight_cat"
     "time_position_positive": "time_position > 0",
     "origin_country_not_null": "origin_country IS NOT NULL",
 })
-def raw_states():
+def dlt_bronze_states():
     """Streaming read from the bronze Delta table written by the ingestion job."""
     return (
         dlt.read_stream(f"{CATALOG}.bronze.raw_states")

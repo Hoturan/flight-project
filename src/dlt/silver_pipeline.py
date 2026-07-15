@@ -1,7 +1,7 @@
 """DLT Silver layer: typed, deduplicated, watermarked state vectors.
 
-Reads from the Bronze DLT table, casts types, drops duplicates,
-applies range-based DQ expectations, and writes to silver.clean_states.
+Reads from the Bronze DLT table (dlt_bronze_states), casts types, drops duplicates,
+applies range-based DQ expectations, and writes to clean_states.
 """
 
 import dlt
@@ -28,7 +28,7 @@ CATALOG = "flight_cat"
 def clean_states():
     """Transform bronze to silver with typing, dedup, watermark."""
     return (
-        dlt.read_stream("raw_states")
+        dlt.read_stream("dlt_bronze_states")
         .withWatermark("time_position_ts", "10 minutes")
         .dropDuplicates(["icao24", "time_position"])
         .select(
