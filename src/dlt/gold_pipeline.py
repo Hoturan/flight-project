@@ -35,7 +35,6 @@ def current_flights():
 )
 def airport_congestion():
     """Count aircraft within rough bounding boxes of major airports per 1-min window."""
-    # Simplified airport proximity boxes (lat/lon ranges)
     airport_box = expr(
         """
         CASE

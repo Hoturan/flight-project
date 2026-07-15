@@ -19,12 +19,14 @@ CATALOG = "flight_cat"
         "delta.deletedFileRetentionDuration": "interval 7 days",
     },
 )
-@dlt.expect_all_or_drop("longitude_range", "longitude BETWEEN -180 AND 180")
-@dlt.expect_all_or_drop("latitude_range", "latitude BETWEEN -90 AND 90")
-@dlt.expect_all_or_drop("altitude_floor", "baro_altitude >= -1000 OR baro_altitude IS NULL")
-@dlt.expect_all_or_drop("velocity_nonneg", "velocity >= 0 OR velocity IS NULL")
+@dlt.expect_all_or_drop({
+    "longitude_range": "longitude BETWEEN -180 AND 180",
+    "latitude_range": "latitude BETWEEN -90 AND 90",
+    "altitude_floor": "baro_altitude >= -1000 OR baro_altitude IS NULL",
+    "velocity_nonneg": "velocity >= 0 OR velocity IS NULL",
+})
 def clean_states():
-    """Transform bronze → silver with typing, dedup, watermark."""
+    """Transform bronze to silver with typing, dedup, watermark."""
     return (
         dlt.read_stream("raw_states")
         .withWatermark("time_position_ts", "10 minutes")
