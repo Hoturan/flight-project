@@ -38,7 +38,7 @@ variable "catalog_name" {
 variable "dlt_edition" {
   description = "DLT pipeline edition: CORE, PRO, or PRO_PREMIUM."
   type        = string
-  default     = "PRO"
+  default     = "advanced"
 }
 
 variable "poll_interval_seconds" {

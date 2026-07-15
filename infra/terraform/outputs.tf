@@ -15,10 +15,6 @@ output "dlt_pipeline_id" {
   value       = databricks_pipeline.dlt_pipeline.id
 }
 
-output "sql_warehouse_id" {
-  description = "SQL Warehouse endpoint ID for BI consumption."
-  value       = databricks_sql_endpoint.consumption.id
-}
 
 output "cluster_policy_id" {
   description = "Cluster policy ID for cost-controlled job clusters."
