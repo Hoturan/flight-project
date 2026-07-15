@@ -1,0 +1,17 @@
+[project]
+name = "flight-project"
+version = "0.1.0"
+description = "OpenSky real-time aviation data platform on Databricks"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

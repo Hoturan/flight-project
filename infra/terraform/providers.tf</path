@@ -1,0 +1,30 @@
+# Provider configuration.
+# The Google provider manages GCS / IAM; the Databricks provider manages
+# workspaces, Unity Catalog, jobs, and pipelines.
+
+provider "google" {
+  project     = var.project_id
+  region      = var.region
+  credentials = var.google_credentials
+}
+
+# Databricks account-level provider (for UC metastore management)
+# Uses OAuth M2M (machine-to-machine) with service principal credentials
+provider "databricks" {
+  alias         = "account"
+  host          = "https://accounts.cloud.databricks.com"
+  account_id    = var.databricks_account_id
+  client_id     = var.databricks_client_id
+  client_secret = var.databricks_client_secret
+  auth_type     = "oauth-m2m"
+}
+
+# Databricks workspace-level provider
+# Uses OAuth M2M with the same service principal credentials
+provider "databricks" {
+  alias         = "workspace"
+  host          = var.workspace_url
+  client_id     = var.databricks_client_id
+  client_secret = var.databricks_client_secret
+  auth_type     = "oauth-m2m"
+}

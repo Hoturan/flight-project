@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Secrets
+*.tfvars
+!*.tfvars.example
+*.json
+!pyproject.toml
+!package.json
+**/credentials/**
+*.pem
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Databricks
+.databricks/
+*.log
+
+# Virtual environments
+.venv/
+venv/
+env/

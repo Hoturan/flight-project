@@ -1,0 +1,190 @@
+# Databricks Jobs: streaming ingestion, DLT pipeline, gold refresh, DQ publish.
+#
+# Databricks Free Edition only supports serverless compute.
+# Jobs require an `environment` block with `environment_key`.
+# DLT pipelines require `serverless = true`.
+# All file paths must be absolute (prefixed with /Workspace/).
+
+# ---------------------------------------------------------------------------
+# 1. Streaming ingestion job (Structured Streaming foreachBatch)
+# ---------------------------------------------------------------------------
+resource "databricks_job" "ingest_streaming" {
+  provider = databricks.workspace
+  name     = "${var.prefix}-ingest-streaming"
+
+  environment {
+    environment_key = "default"
+    spec {
+      client        = "1"
+      dependencies = []
+    }
+  }
+
+  task {
+    task_key        = "ingest"
+    environment_key = "default"
+    spark_python_task {
+      python_file = "${var.workspace_path}/src/ingestion/opensky_stream.py"
+      parameters  = ["--catalog", var.catalog_name, "--poll-interval", tostring(var.poll_interval_seconds)]
+    }
+  }
+
+  schedule {
+    quartz_cron_expression = "0 */1 * * * ?" # every minute
+    timezone_id            = "UTC"
+  }
+
+  depends_on = [databricks_schema.schemas]
+}
+
+# ---------------------------------------------------------------------------
+# 2. DLT pipeline (medallion Bronze → Silver → Gold)
+# ---------------------------------------------------------------------------
+resource "databricks_pipeline" "dlt_pipeline" {
+  provider   = databricks.workspace
+  name       = "${var.prefix}-dlt-pipeline"
+  edition    = var.dlt_edition
+  channel    = "CURRENT"
+  serverless = true
+
+  catalog = var.catalog_name
+  target  = "bronze"
+
+  library {
+    file {
+      path = "${var.workspace_path}/src/dlt/bronze_pipeline.py"
+    }
+  }
+
+  library {
+    file {
+      path = "${var.workspace_path}/src/dlt/silver_pipeline.py"
+    }
+  }
+
+  library {
+    file {
+      path = "${var.workspace_path}/src/dlt/gold_pipeline.py"
+    }
+  }
+
+  depends_on = [databricks_schema.schemas]
+}
+
+# ---------------------------------------------------------------------------
+# 3. Gold refresh job (materialize / upsert gold tables)
+# ---------------------------------------------------------------------------
+resource "databricks_job" "gold_refresh" {
+  provider = databricks.workspace
+  name     = "${var.prefix}-gold-refresh"
+
+  environment {
+    environment_key = "default"
+    spec {
+      client        = "1"
+      dependencies = []
+    }
+  }
+
+  task {
+    task_key        = "gold_refresh"
+    environment_key = "default"
+    spark_python_task {
+      python_file = "${var.workspace_path}/src/jobs/gold_refresh.py"
+      parameters  = ["--catalog", var.catalog_name]
+    }
+  }
+
+  schedule {
+    quartz_cron_expression = "0 */5 * * * ?" # every 5 minutes
+    timezone_id            = "UTC"
+  }
+
+  depends_on = [databricks_pipeline.dlt_pipeline]
+}
+
+# ---------------------------------------------------------------------------
+# 4. DQ metrics publish job
+# ---------------------------------------------------------------------------
+resource "databricks_job" "dq_publish" {
+  provider = databricks.workspace
+  name     = "${var.prefix}-dq-publish"
+
+  environment {
+    environment_key = "default"
+    spec {
+      client        = "1"
+      dependencies = []
+    }
+  }
+
+  task {
+    task_key        = "dq_publish"
+    environment_key = "default"
+    spark_python_task {
+      python_file = "${var.workspace_path}/src/jobs/dq_publish.py"
+      parameters  = ["--catalog", var.catalog_name]
+    }
+  }
+
+  schedule {
+    quartz_cron_expression = "0 */5 * * * ?" # every 5 minutes
+    timezone_id            = "UTC"
+  }
+
+  depends_on = [databricks_job.gold_refresh]
+}
+
+# ---------------------------------------------------------------------------
+# 5. Orchestration workflow (chained dependency graph)
+# ---------------------------------------------------------------------------
+resource "databricks_job" "orchestration" {
+  provider = databricks.workspace
+  name     = "${var.prefix}-orchestration"
+
+  environment {
+    environment_key = "default"
+    spec {
+      client        = "1"
+      dependencies = []
+    }
+  }
+
+  task {
+    task_key = "trigger_dlt"
+    pipeline_task {
+      pipeline_id = databricks_pipeline.dlt_pipeline.id
+    }
+  }
+
+  task {
+    task_key        = "gold_refresh"
+    environment_key = "default"
+    depends_on {
+      task_key = "trigger_dlt"
+    }
+    spark_python_task {
+      python_file = "${var.workspace_path}/src/jobs/gold_refresh.py"
+      parameters  = ["--catalog", var.catalog_name]
+    }
+  }
+
+  task {
+    task_key        = "dq_publish"
+    environment_key = "default"
+    depends_on {
+      task_key = "gold_refresh"
+    }
+    spark_python_task {
+      python_file = "${var.workspace_path}/src/jobs/dq_publish.py"
+      parameters  = ["--catalog", var.catalog_name]
+    }
+  }
+
+  schedule {
+    quartz_cron_expression = "0 */5 * * * ?" # every 5 minutes
+    timezone_id            = "UTC"
+  }
+
+  depends_on = [databricks_pipeline.dlt_pipeline]
+}

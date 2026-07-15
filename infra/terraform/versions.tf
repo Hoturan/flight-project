@@ -1,0 +1,17 @@
+# Terraform and provider version pinning.
+# Databricks provider >= 1.40 is required for Unity Catalog resources.
+
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    databricks = {
+      source  = "databricks/databricks"
+      version = "~> 1.40"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.5"
+    }
+  }
+}

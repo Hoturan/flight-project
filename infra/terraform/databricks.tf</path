@@ -1,0 +1,78 @@
+# Databricks workspace reference and Unity Catalog definitions.
+#
+# Since the workspace already exists on GCP (personal instance), we reference
+# it via the workspace_url and workspace_id variables rather than creating one.
+# If you need to create a new workspace, uncomment the creation block below.
+
+# ---------------------------------------------------------------------------
+# Option B: Create a new workspace (uncomment if needed)
+# ---------------------------------------------------------------------------
+# resource "databricks_mws_workspaces" "this" {
+#   provider   = databricks.account
+#   account_id = var.databricks_account_id
+#   location   = var.region
+#   cloud_resource_container {
+#     gcp {
+#       project_id = var.project_id
+#     }
+#   }
+#   gke_config {
+#     gke_cluster_config {
+#       connectivity_config {
+#         private_cluster_enabled = false
+#       }
+#       master_ip_range = "10.0.10.0/28"
+#       node_pool {
+#         node_config {
+#           node_count    = 1
+#           machine_type  = "e2-standard-4"
+#         }
+#       }
+#     }
+#   }
+#   workspace_name = "${var.prefix}-workspace"
+# }
+
+# ---------------------------------------------------------------------------
+# Unity Catalog metastore
+# Note: Unity Catalog requires a premium/enterprise tier workspace.
+# If your workspace doesn't support UC, comment out all UC-related resources
+# and create tables directly via Spark SQL.
+# ---------------------------------------------------------------------------
+resource "databricks_metastore" "this" {
+  provider     = databricks.account
+  name         = "${var.prefix}-metastore"
+  storage_root = local.storage_root
+  region       = var.region
+}
+
+# Assign metastore to the existing workspace
+resource "databricks_metastore_assignment" "this" {
+  provider     = databricks.workspace
+  workspace_id = var.workspace_id
+  metastore_id = databricks_metastore.this.metastore_id
+}
+
+# Set default catalog namespace (replaces deprecated default_catalog_name)
+resource "databricks_default_namespace_setting" "this" {
+  provider   = databricks.workspace
+  namespace  = var.catalog_name
+  depends_on = [databricks_metastore_assignment.this]
+}
+
+# Catalog
+resource "databricks_catalog" "flight" {
+  provider   = databricks.workspace
+  name       = var.catalog_name
+  comment    = "Flight project production catalog"
+  depends_on = [databricks_metastore_assignment.this]
+}
+
+# Schemas
+resource "databricks_schema" "schemas" {
+  for_each     = toset(["bronze", "silver", "gold", "governance", "ml_features"])
+  provider     = databricks.workspace
+  catalog_name = databricks_catalog.flight.name
+  name         = each.key
+  comment      = "Medallion layer: ${each.key}"
+}
