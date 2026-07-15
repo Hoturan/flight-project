@@ -1,9 +1,9 @@
 """DLT Gold layer: curated data products.
 
 Produces three gold tables:
-  - current_flights: latest state vector per icao24
-  - airport_congestion: rolling aggregations near major airports
-  - anomaly_feed: outlier state vectors for ops alerting & ML
+  - gold.current_flights: latest state vector per icao24
+  - gold.airport_congestion: rolling aggregations near major airports
+  - gold.anomaly_feed: outlier state vectors for ops alerting & ML
 """
 
 import dlt
@@ -13,14 +13,14 @@ CATALOG = "flight_cat"
 
 
 @dlt.table(
-    name="current_flights",
+    name="gold.current_flights",
     comment="Latest state vector per aircraft (icao24)",
     table_properties={"delta.enableChangeDataFeed": "true"},
 )
 def current_flights():
     """Pick the most recent row per icao24 from silver."""
     return (
-        dlt.read_stream("clean_states")
+        dlt.read_stream("silver.clean_states")
         .groupBy("icao24")
         .agg(
             spark_max("time_position").alias("time_position"),
@@ -30,7 +30,7 @@ def current_flights():
 
 
 @dlt.table(
-    name="airport_congestion",
+    name="gold.airport_congestion",
     comment="Rolling counts of aircraft near major airports (windowed)",
 )
 def airport_congestion():
@@ -48,7 +48,7 @@ def airport_congestion():
     )
 
     return (
-        dlt.read_stream("clean_states")
+        dlt.read_stream("silver.clean_states")
         .withColumn("airport", airport_box)
         .filter("airport IS NOT NULL")
         .withWatermark("time_position", "10 minutes")
@@ -65,13 +65,13 @@ def airport_congestion():
 
 
 @dlt.table(
-    name="anomaly_feed",
+    name="gold.anomaly_feed",
     comment="Outlier state vectors (altitude or velocity beyond thresholds)",
 )
 def anomaly_feed():
     """Flag anomalous readings for operational alerting and ML feature engineering."""
     return (
-        dlt.read_stream("clean_states")
+        dlt.read_stream("silver.clean_states")
         .filter(
             "baro_altitude > 15000 OR velocity > 400 OR vertical_rate > 25 OR vertical_rate < -25"
         )

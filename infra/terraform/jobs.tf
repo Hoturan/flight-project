@@ -39,7 +39,7 @@ resource "databricks_pipeline" "dlt_pipeline" {
   serverless = true
 
   catalog = var.catalog_name
-  target  = "bronze"
+  target  = "silver"
 
   library {
     file {

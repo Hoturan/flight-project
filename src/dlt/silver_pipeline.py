@@ -1,7 +1,8 @@
 """DLT Silver layer: typed, deduplicated, watermarked state vectors.
 
-Reads from the Bronze DLT table (dlt_bronze_states), casts types, drops duplicates,
-applies range-based DQ expectations, and writes to clean_states.
+Reads from the Bronze DLT table (bronze.dlt_bronze_states), casts types,
+drops duplicates, applies range-based DQ expectations, and writes to
+silver.clean_states.
 """
 
 import dlt
@@ -12,7 +13,7 @@ CATALOG = "flight_cat"
 
 
 @dlt.table(
-    name="clean_states",
+    name="silver.clean_states",
     comment="Typed, deduplicated, watermarked OpenSky state vectors",
     table_properties={
         "delta.enableChangeDataFeed": "true",
@@ -28,7 +29,7 @@ CATALOG = "flight_cat"
 def clean_states():
     """Transform bronze to silver with typing, dedup, watermark."""
     return (
-        dlt.read_stream("dlt_bronze_states")
+        dlt.read_stream("bronze.dlt_bronze_states")
         .withWatermark("time_position_ts", "10 minutes")
         .dropDuplicates(["icao24", "time_position"])
         .select(

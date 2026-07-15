@@ -2,8 +2,7 @@
 
 The ingestion job (flight-ingest-streaming) writes to flight_cat.bronze.raw_states.
 This DLT table reads from that external table and applies DQ expectations.
-The DLT table is named 'dlt_bronze_states' to avoid a naming cycle with the
-external bronze.raw_states table.
+The DLT table is named 'bronze.dlt_bronze_states' to avoid a naming cycle.
 """
 
 import dlt
@@ -14,7 +13,7 @@ CATALOG = "flight_cat"
 
 
 @dlt.table(
-    name="dlt_bronze_states",
+    name="bronze.dlt_bronze_states",
     comment="DLT bronze layer — reads from externally-ingested bronze.raw_states",
     table_properties={"delta.logRetentionDuration": "interval 14 days"},
 )
